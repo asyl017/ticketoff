@@ -5,7 +5,7 @@ TicketOff is a web application that provides users with an easy way to search fo
 
 ## Team Members
 - Tursumetov Alexander
--  
+- Zhangubek Assylzhan
 
 ## Screenshot of the Homepage  
 ![image](https://github.com/user-attachments/assets/119331e8-a537-4118-b0ee-dc0b886d5d3c)
