@@ -1,13 +1,116 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport"
-          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
-    <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>Document</title>
+    <title>User Management</title>
 </head>
 <body>
-<h1>Афиша событий</h1>
+<h1>User Management</h1>
+
+<h2>Create User</h2>
+<form id="createUserForm">
+    <label for="email">Email:</label>
+    <input type="email" id="email" name="email" required>
+
+    <label for="password">Password:</label>
+    <input type="password" id="password" name="password" required>
+
+    <button type="submit">Create</button>
+</form>
+
+<h2>Users</h2>
+<button id="fetchUsersBtn">Get All Users</button>
+<table id="usersTable">
+    <thead>
+    <tr>
+        <th>ID</th>
+        <th>Email</th>
+        <th>Actions</th>
+    </tr>
+    </thead>
+    <tbody></tbody>
+</table>
+
+<script>
+    // Fetch and display users when the "Get All Users" button is clicked
+    document.getElementById('fetchUsersBtn').addEventListener('click', fetchAndDisplayUsers);
+
+    // Handle create user form submission
+    const createUserForm = document.getElementById('createUserForm');
+    createUserForm.addEventListener('submit', createUser);
+
+    function fetchAndDisplayUsers() {
+        // Fetch users from the backend and display them in the table
+        fetch('/users')
+            .then(response => response.json())
+            .then(data => {
+                const usersTable = document.getElementById('usersTable').getElementsByTagName('tbody')[0];
+                usersTable.innerHTML = ''; // Clear the table
+
+                data.forEach(user => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                            <td>${user.id}</td>
+                            <td>${user.email}</td>
+                            <td>
+                                <button class="edit-btn" data-id="${user.id}">Edit</button>
+                                <button class="delete-btn" data-id="${user.id}">Delete</button>
+                            </td>
+                        `;
+                    usersTable.appendChild(row);
+                });
+            })
+            .catch(error => console.error('Error fetching users:', error));
+    }
+
+    function createUser(event) {
+        event.preventDefault();
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+
+        fetch('/users', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ email, password })
+        })
+            .then(response => {
+                if (response.ok) {
+                    return response.json();
+                } else {
+                    return response.text().then(text => {
+                        throw new Error(text);
+                    });
+                }
+            })
+            .then(data => {
+                // Handle successful user creation
+                console.log('User created:', data);
+                alert('User created!');
+                // Add the new user to the table
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                <td>${data.id}</td>
+                <td>${data.email}</td>
+                <td>
+                    <button class="edit-btn" data-id="${data.id}">Edit</button>
+                    <button class="delete-btn" data-id="${data.id}">Delete</button>
+                </td>
+            `;
+                document.getElementById('usersTable').getElementsByTagName('tbody')[0].appendChild(row);
+                // Clear the form fields
+                document.getElementById('email').value = '';
+                document.getElementById('password').value = '';
+            })
+            .catch(error => {
+                // Handle user creation error
+                console.error('Error creating user:', error);
+                alert(`Error creating user: ${error.message}`);
+            });
+    }
+
+
+</script>
 </body>
 </html>

@@ -6,8 +6,8 @@ import (
 
 type User struct {
 	gorm.Model
-	Email    string `json:"email"`
-	Password string `json:"password"`
+	Email    string `json:"email" gorm:" unique;not null"`
+	Password string `json:"password" gorm:"not null"`
 }
 
 func Migrate(DB *gorm.DB) {
