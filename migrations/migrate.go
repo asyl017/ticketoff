@@ -4,14 +4,29 @@ import (
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 	"log"
+	"ticketoff/models"
 )
 
-func InitDB(dsn string) (*gorm.DB, error) {
+var db *gorm.DB
 
-	db, err := gorm.Open("postgres", dsn)
+// InitDB initializes the database and runs migrations
+func InitDB(connectionString string) (*gorm.DB, error) {
+	db, err := gorm.Open("postgres", connectionString)
 	if err != nil {
-		log.Fatal("Error connecting to database", err)
 		return nil, err
 	}
+
+	// Automatically migrate the schema
+	if err := db.AutoMigrate(&models.User{}).Error; err != nil {
+		log.Fatalf("Migration failed: %v", err)
+		return nil, err
+	}
+
+	log.Println("Database connected and migrated successfully")
 	return db, nil
+}
+
+// GetDB returns the DB instance for use in other packages
+func GetDB() *gorm.DB {
+	return db
 }
