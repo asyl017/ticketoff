@@ -18,14 +18,14 @@ func main() {
 	db := InitDB()
 	userRepo := repositories.NewUserRepository(db)
 	userRouter := handler.NewUserRouter(userRepo)
-
+	authHandler := handler.NewAuthHandler(userRepo)
 	// Correctly reference handler
 	router.HandleFunc("/users", userRouter.CreateUser).Methods("POST")
 	router.HandleFunc("/users", userRouter.GetUsers).Methods("GET")
 	router.HandleFunc("/users/{id}", userRouter.GetUserByID).Methods("GET")
 	router.HandleFunc("/users/{id}", userRouter.UpdateUser).Methods("PUT")
 	router.HandleFunc("/users/{id}", userRouter.DeleteUser).Methods("DELETE")
-
+	router.HandleFunc("/login", authHandler.Login).Methods("POST")
 	cors := handlers.CORS(
 		handlers.AllowedOrigins([]string{"*"}),
 		handlers.AllowedMethods([]string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}),
