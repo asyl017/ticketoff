@@ -102,18 +102,53 @@ func (u userRouter) GetUserByID(w http.ResponseWriter, r *http.Request) {
 func (u userRouter) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
+
+	// Retrieve the user by ID
 	user, err := u.userRepo.GetUserByID(id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			http.Error(w, "User not found", http.StatusNotFound)
 			return
 		}
-		http.Error(w, err.Error(), http.StatusNotFound)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	user, err = u.userRepo.UpdateUser(user)
-	json.NewEncoder(w).Encode(user)
+	// Decode the request body to get the updated user details
+	var updatedUser models.User
+	err = json.NewDecoder(r.Body).Decode(&updatedUser)
+	if err != nil {
+		http.Error(w, "Invalid request payload", http.StatusBadRequest)
+		return
+	}
+
+	// Store the unhashed password
+	unhashedPassword := updatedUser.Password
+
+	// Hash the new password
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(updatedUser.Password), bcrypt.DefaultCost)
+	if err != nil {
+		http.Error(w, "Error hashing password", http.StatusInternalServerError)
+		return
+	}
+	updatedUser.Password = string(hashedPassword)
+
+	// Update the user in the repository
+	updatedUser.ID = user.ID
+	updatedUserPtr, err := u.userRepo.UpdateUser(&updatedUser)
+	if err != nil {
+		http.Error(w, "Error updating user: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Return the unhashed password and the updated user
+	response := map[string]interface{}{
+		"unhashed_password": unhashedPassword,
+		"user":              updatedUserPtr,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
 }
 
 // Handler for deleting a user (DELETE)
