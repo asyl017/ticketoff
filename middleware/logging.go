@@ -9,7 +9,7 @@ import (
 
 var jwtKey = []byte("your-secret-key") // Change this to your own secret key
 
-func AuthMiddleware(next http.Handler) http.Handler {
+func LoginMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" {

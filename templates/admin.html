@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Panel</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        form {
+            max-width: 500px;
+            margin: auto;
+        }
+        input[type="text"], input[type="email"], textarea {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+        }
+        input[type="submit"] {
+            width: 100%;
+            padding: 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        input[type="submit"]:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+<h2>Admin Panel</h2>
+<form id="emailForm">
+    <label for="to">To:</label>
+    <input type="email" id="to" name="to" placeholder="Enter recipient email" required>
+    <label for="subject">Subject:</label>
+    <input type="text" id="subject" name="subject" placeholder="Enter email subject" required>
+    <label for="message">Message:</label>
+    <textarea id="message" name="message" placeholder="Enter email message" required></textarea>
+    <input type="submit" value="Send Email">
+</form>
+
+<script>
+
+    const url = "http://localhost:8080";
+
+    document.getElementById('emailForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        sendEmail();
+    });
+
+    function sendEmail() {
+        const to = document.getElementById('to').value;
+        const subject = document.getElementById('subject').value;
+        const message = document.getElementById('message').value;
+        newUrl =
+        fetch('http://localhost:8080/send-email', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ to, subject, message })
+        })
+            .then(response => response.json())
+            .then(data => {
+                alert('Email sent successfully!');
+            })
+            .catch(error => {
+                console.error('Error sending email:', error);
+                alert('Error sending email');
+            });
+    }
+</script>
+</body>
+</html>

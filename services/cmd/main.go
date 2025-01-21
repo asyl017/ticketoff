@@ -4,6 +4,8 @@ import (
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/jinzhu/gorm"
+	"gopkg.in/gomail.v2"
+	_ "gopkg.in/gomail.v2"
 	"log"
 	"net/http"
 	"ticketoff/handler"
@@ -12,6 +14,8 @@ import (
 	"ticketoff/repositories"
 	"ticketoff/utils"
 )
+
+var Dialer *gomail.Dialer
 
 func main() {
 	utils.InitLogger()
@@ -37,11 +41,8 @@ func main() {
 
 	router.HandleFunc("/login", authHandler.Login).Methods("POST")
 
-	router.HandleFunc("/films", filmHandler.CreateFilm).Methods("POST")
 	router.HandleFunc("/films", filmHandler.GetFilms).Methods("GET")
 	router.HandleFunc("/films/{id}", filmHandler.GetFilmByID).Methods("GET")
-	router.HandleFunc("/films/{id}", filmHandler.UpdateFilm).Methods("PUT")
-	router.HandleFunc("/films/{id}", filmHandler.DeleteFilm).Methods("DELETE")
 
 	router.HandleFunc("/send-email", handler.SendEmail).Methods("POST")
 
@@ -59,5 +60,8 @@ func InitDB() *gorm.DB {
 		log.Fatal("Error initializing database: ", err)
 	}
 	models.MigrateUser(db)
+	if err := db.AutoMigrate(&models.Film{}).Error; err != nil {
+		log.Fatalf("Film migration failed: %v", err)
+	}
 	return db
 }

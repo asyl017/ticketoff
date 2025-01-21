@@ -15,6 +15,6 @@ type Credentials struct {
 	Password string `json:"password"`
 }
 
-func Migrate(DB *gorm.DB) {
+func MigrateUser(DB *gorm.DB) {
 	DB.AutoMigrate(&User{})
 }

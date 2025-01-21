@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Films</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        form {
+            max-width: 300px;
+            margin: auto;
+        }
+        input[type="text"], input[type="number"] {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+        }
+        input[type="submit"], button {
+            width: 100%;
+            padding: 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        input[type="submit"]:hover, button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+<h2>Films</h2>
+<form id="filterForm">
+    <label for="filter">Filter by Title:</label>
+    <input type="text" id="filter" name="filter" placeholder="Enter title">
+    <label for="sort">Sort by:</label>
+    <select id="sort" name="sort">
+        <option value="title">Title</option>
+        <option value="release_year">Release Year</option>
+    </select>
+    <label for="page">Page:</label>
+    <input type="number" id="page" name="page" min="1" value="1">
+    <input type="submit" value="Apply">
+</form>
+
+<table id="filmsTable">
+    <thead>
+    <tr>
+        <th>ID</th>
+        <th>Title</th>
+        <th>Description</th>
+        <th>Director</th>
+        <th>Release Year</th>
+        <th>Actions</th>
+    </tr>
+    </thead>
+    <tbody>
+    <!-- Films will be populated here -->
+    </tbody>
+</table>
+
+<script>
+    const url = "http://localhost:8080";
+
+    // Fetch films from the server
+    function fetchFilms() {
+        const params = new URLSearchParams(window.location.search);
+
+        // Извлекаем значения из параметров
+        const filter = params.get('filter') || '';  // Если параметр отсутствует, будет пустая строка
+        const sort = params.get('sort') || 'title'; // Если параметр отсутствует, по умолчанию сортируем по "title"
+        const page = params.get('page') || 1;
+        const newUrl = `${url}/films?filter=${filter}&sort=${sort}&page=${page}`;
+
+        fetch(newUrl)
+            .then(response => response.json())
+            .then(data => {
+                const tbody = document.querySelector('#filmsTable tbody');
+                tbody.innerHTML = ''; // Clear existing rows
+
+                data.forEach(film => {
+                    const row = document.createElement('tr');
+
+                    const idCell = document.createElement('td');
+                    idCell.textContent = film.id;
+                    row.appendChild(idCell);
+
+                    const titleCell = document.createElement('td');
+                    titleCell.textContent = film.title;
+                    row.appendChild(titleCell);
+
+                    const descriptionCell = document.createElement('td');
+                    descriptionCell.textContent = film.description;
+                    row.appendChild(descriptionCell);
+
+                    const directorCell = document.createElement('td');
+                    directorCell.textContent = film.director;
+                    row.appendChild(directorCell);
+
+                    const releaseYearCell = document.createElement('td');
+                    releaseYearCell.textContent = film.release_year;
+                    row.appendChild(releaseYearCell);
+
+                    const actionsCell = document.createElement('td');
+                    actionsCell.innerHTML = `
+                    <button onclick="editFilm(${film.id}, '${film.title}', '${film.description}', '${film.director}', ${film.release_year})">Edit</button>
+                    <button onclick="deleteFilm(${film.id})">Delete</button>
+                `;
+                    row.appendChild(actionsCell);
+
+                    tbody.appendChild(row);
+                });
+            })
+            .catch(error => {
+                console.error('Error fetching films:', error);
+                alert(error);
+            });
+    }
+
+    function createFilm() {
+        const title = document.getElementById('title').value;
+        const description = document.getElementById('description').value;
+        const director = document.getElementById('director').value;
+        const releaseYear = document.getElementById('releaseYear').value;
+
+        fetch(url + '/films', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ title, description, director, release_year: releaseYear })
+        })
+            .then(response => response.json())
+            .then(data => {
+                alert('Film created successfully!');
+                fetchFilms(); // Refresh the film list
+            })
+            .catch(error => {
+                console.error('Error creating film:', error);
+                alert(error);
+            });
+    }
+
+    function editFilm(id, title, description, director, releaseYear) {
+        document.getElementById('title').value = title;
+        document.getElementById('description').value = description;
+        document.getElementById('director').value = director;
+        document.getElementById('releaseYear').value = releaseYear;
+        document.getElementById('filmId').value = id;
+        document.getElementById('filmForm').style.display = 'block';
+    }
+
+    function updateFilm() {
+        const id = document.getElementById('filmId').value;
+        const title = document.getElementById('title').value;
+        const description = document.getElementById('description').value;
+        const director = document.getElementById('director').value;
+        const releaseYear = document.getElementById('releaseYear').value;
+
+        fetch(url + `/films/${id}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ title, description, director, release_year: releaseYear })
+        })
+            .then(response => response.json())
+            .then(data => {
+                alert('Film updated successfully!');
+                fetchFilms(); // Refresh the film list
+                document.getElementById('filmForm').reset();
+                document.getElementById('filmForm').style.display = 'none';
+            })
+            .catch(error => {
+                console.error('Error updating film:', error);
+                alert(error);
+            });
+    }
+
+    function deleteFilm(id) {
+        if (confirm('Are you sure you want to delete this film?')) {
+            fetch(url + `/films/${id}`, {
+                method: 'DELETE'
+            })
+                .then(() => {
+                    alert('Film deleted successfully!');
+                    fetchFilms(); // Refresh the film list
+                })
+                .catch(error => {
+                    console.error('Error deleting film:', error);
+                });
+        }
+    }
+
+    // // Create a new film
+    // document.getElementById('filmForm').addEventListener('submit', function(e) {
+    //     e.preventDefault();
+    //     const id = document.getElementById('filmId').value;
+    //     if (id) {
+    //         updateFilm();
+    //     } else {
+    //         createFilm();
+    //     }
+    // });
+
+    // Load films on page load
+    fetchFilms();
+</script>
+</body>
+</html>

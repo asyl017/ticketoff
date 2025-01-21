@@ -21,9 +21,15 @@ func InitDB(connectionString string) (*gorm.DB, error) {
 		log.Fatalf("Migration failed: %v", err)
 		return nil, err
 	}
+	// Automatically migrate the Film schema
+	if err := db.AutoMigrate(&models.Film{}).Error; err != nil {
+		log.Fatalf("Film migration failed: %v", err)
+		return nil, err
+	}
 
 	log.Println("Database connected and migrated successfully")
 	return db, nil
+
 }
 
 // GetDB returns the DB instance for use in other packages
