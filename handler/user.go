@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/gorilla/mux"
 	"github.com/jinzhu/gorm"
 	"golang.org/x/crypto/bcrypt"
@@ -71,6 +72,14 @@ func (u userRouter) CreateUser(w http.ResponseWriter, r *http.Request) {
 	err = u.userRepo.CreateUser(&user)
 	if err != nil {
 		http.Error(w, "Error creating user: "+err.Error(), http.StatusConflict)
+		return
+	}
+
+	// Send confirmation email
+	confirmationLink := fmt.Sprintf("http://localhost:8080/confirm-email?token=%s", utils.GenerateToken(user.Email))
+	err = utils.SendEmail(user.Email, "Confirm your email", "Please confirm your email by clicking the following link: "+confirmationLink)
+	if err != nil {
+		http.Error(w, "Error sending confirmation email: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 

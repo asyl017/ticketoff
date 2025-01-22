@@ -5,12 +5,18 @@ import (
 	"fmt"
 	"gopkg.in/gomail.v2"
 	"net/http"
+	"ticketoff/repositories"
+	"ticketoff/utils"
 )
 
 type EmailRequest struct {
 	To      string `json:"to"`
 	Subject string `json:"subject"`
 	Message string `json:"message"`
+}
+
+type EmailHandler struct {
+	UserRepo repositories.UserRepository
 }
 
 func SendEmail(w http.ResponseWriter, r *http.Request) {
@@ -35,4 +41,22 @@ func SendEmail(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{"message": "Email sent successfully"})
+}
+
+// ConfirmEmail handler
+func (h *EmailHandler) ConfirmEmail(w http.ResponseWriter, r *http.Request) {
+	token := r.URL.Query().Get("token")
+	email, err := utils.ParseToken(token)
+	if err != nil {
+		http.Error(w, "Invalid or expired token", http.StatusBadRequest)
+		return
+	}
+	err = h.UserRepo.ConfirmEmail(email)
+	if err != nil {
+		http.Error(w, "Error confirming email: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("Email confirmed successfully!"))
 }

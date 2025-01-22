@@ -15,6 +15,7 @@ type UserRepository interface {
 	UpdateUser(updatedUser *models.User) (*models.User, error)
 	DeleteUser(id string) error
 	GetUsers() ([]models.User, error)
+	ConfirmEmail(email string) error
 }
 
 type userRepository struct {
@@ -98,4 +99,18 @@ func (u userRepository) GetUsers() ([]models.User, error) {
 	var users []models.User
 	err := u.db.Find(&users).Error
 	return users, err
+}
+
+func (u userRepository) ConfirmEmail(email string) error {
+	var user models.User
+	if err := u.db.Where("email = ?", email).First(&user).Error; err != nil {
+		return err
+	}
+
+	user.EmailConfirmed = true
+	if err := u.db.Save(&user).Error; err != nil {
+		return err
+	}
+
+	return nil
 }

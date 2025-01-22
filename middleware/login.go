@@ -24,9 +24,8 @@ func LoginMiddleware(next http.Handler) http.Handler {
 		})
 
 		if err != nil || !token.Valid {
-			http.Error(w, "Invalid token", http.StatusUnauthorized)
+			http.Error(w, "Invalid or expired token", http.StatusUnauthorized)
 			return
-
 		}
 		ctx := context.WithValue(r.Context(), "userID", claims.Issuer)
 		next.ServeHTTP(w, r.WithContext(ctx))

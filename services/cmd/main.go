@@ -46,6 +46,9 @@ func main() {
 
 	router.HandleFunc("/send-email", handler.SendEmail).Methods("POST")
 
+	emailHandler := handler.EmailHandler{UserRepo: userRepo}
+	router.HandleFunc("/confirm-email", emailHandler.ConfirmEmail).Methods("GET")
+
 	cors := handlers.CORS(
 		handlers.AllowedOrigins([]string{"*"}),
 		handlers.AllowedMethods([]string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}),
