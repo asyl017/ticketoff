@@ -1,10 +1,9 @@
 package repositories
 
 import (
-	"fmt"
-	"github.com/jinzhu/gorm"
-	_ "github.com/jinzhu/gorm/dialects/postgres" // Import Postgres dialect
-	"log"
+	"context"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 	"ticketoff/models"
 )
 
@@ -19,98 +18,68 @@ type UserRepository interface {
 }
 
 type userRepository struct {
-	db *gorm.DB
+	db *mongo.Database
 }
 
-func NewUserRepository(db *gorm.DB) UserRepository {
+func NewUserRepository(db *mongo.Database) UserRepository {
 	return &userRepository{
 		db: db,
 	}
 }
 
-func (u userRepository) GetUserByEmail(email string) (*models.User, error) {
-	var user models.User
-	if err := u.db.Where("email = ?", email).First(&user).Error; err != nil {
-		return nil, err
-	}
-	return &user, nil
+func (u userRepository) CreateUser(user *models.User) error {
+	collection := u.db.Collection("users")
+	_, err := collection.InsertOne(context.Background(), user)
+	return err
 }
 
-func (u userRepository) CreateUser(user *models.User) error {
-	if u.db == nil {
-		return fmt.Errorf("database connection is not initialized")
-	}
-
-	// Log the incoming user data for debugging
-	log.Printf("Creating user: %+v\n", user)
-
-	// Attempt to create the user in the database
-	if err := u.db.Create(user).Error; err != nil {
-		log.Printf("Error creating user: %v\n", err)
-		return err
-	}
-
-	return nil
+func (u userRepository) GetUserByEmail(email string) (*models.User, error) {
+	collection := u.db.Collection("users")
+	var user models.User
+	err := collection.FindOne(context.Background(), bson.M{"email": email}).Decode(&user)
+	return &user, err
 }
 
 func (u userRepository) GetUserByID(id string) (*models.User, error) {
-	if u.db == nil {
-		return nil, fmt.Errorf("database connection is not initialized")
-	}
-
+	collection := u.db.Collection("users")
 	var user models.User
-	log.Printf("Fetching user with ID: %s\n", id)
-
-	if err := u.db.First(&user, "id = ?", id).Error; err != nil {
-		log.Printf("Error fetching user: %v\n", err)
-		return nil, err
-	}
-
-	log.Printf("Fetched user: %+v\n", user)
-	return &user, nil
+	err := collection.FindOne(context.Background(), bson.M{"id": id}).Decode(&user)
+	return &user, err
 }
 
-// UpdateUser updates a user's details
 func (u userRepository) UpdateUser(updatedUser *models.User) (*models.User, error) {
-	model := updatedUser
-	err := u.db.Save(updatedUser).Error
+	collection := u.db.Collection("users")
+	_, err := collection.UpdateOne(context.Background(), bson.M{"id": updatedUser.ID}, bson.M{"$set": updatedUser})
+	return updatedUser, err
+}
+
+func (u userRepository) DeleteUser(id string) error {
+	collection := u.db.Collection("users")
+	_, err := collection.DeleteOne(context.Background(), bson.M{"id": id})
+	return err
+}
+
+func (u userRepository) GetUsers() ([]models.User, error) {
+	collection := u.db.Collection("users")
+	cursor, err := collection.Find(context.Background(), bson.M{})
 	if err != nil {
-		log.Printf("Error updating user: %v\n", err)
 		return nil, err
 	}
-	return model, err
-}
+	defer cursor.Close(context.Background())
 
-// DeleteUser removes a user from the database by ID
-func (u userRepository) DeleteUser(id string) error {
-	var user models.User
-
-	// Find user by ID
-	if err := u.db.First(&user, "id = ?", id).Error; err != nil {
-		return err
-	}
-
-	// Delete user
-	return u.db.Delete(&user).Error
-}
-
-// GetUsers retrieves all users from the database
-func (u userRepository) GetUsers() ([]models.User, error) {
 	var users []models.User
-	err := u.db.Find(&users).Error
-	return users, err
+	for cursor.Next(context.Background()) {
+		var user models.User
+		if err := cursor.Decode(&user); err != nil {
+			return nil, err
+		}
+		users = append(users, user)
+	}
+	return users, nil
 }
 
 func (u userRepository) ConfirmEmail(email string) error {
-	var user models.User
-	if err := u.db.Where("email = ?", email).First(&user).Error; err != nil {
-		return err
-	}
-
-	user.EmailConfirmed = true
-	if err := u.db.Save(&user).Error; err != nil {
-		return err
-	}
-
-	return nil
+	collection := u.db.Collection("users")
+	_, err := collection.UpdateOne(context.Background(), bson.M{"email": email}, bson.M{"$set": bson.M{"email_confirmed": true}})
+	return err
 }

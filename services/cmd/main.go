@@ -3,19 +3,14 @@ package main
 import (
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
-	"github.com/jinzhu/gorm"
-	"gopkg.in/gomail.v2"
-	_ "gopkg.in/gomail.v2"
+	"go.mongodb.org/mongo-driver/mongo"
 	"log"
 	"net/http"
 	"ticketoff/handler"
 	"ticketoff/migrations"
-	"ticketoff/models"
 	"ticketoff/repositories"
 	"ticketoff/utils"
 )
-
-var Dialer *gomail.Dialer
 
 func main() {
 	utils.InitLogger()
@@ -25,14 +20,12 @@ func main() {
 
 	db := InitDB()
 
-	db.LogMode(true)
-
 	userRepo := repositories.NewUserRepository(db)
 	filmRepo := repositories.NewFilmRepository(db)
 	userRouter := handler.NewUserRouter(userRepo)
 	authHandler := handler.NewAuthHandler(userRepo)
 	filmHandler := handler.NewFilmHandler(filmRepo)
-	// Correctly reference handler
+
 	router.HandleFunc("/users", userRouter.CreateUser).Methods("POST")
 	router.HandleFunc("/users", userRouter.GetUsers).Methods("GET")
 	router.HandleFunc("/users/{id}", userRouter.GetUserByID).Methods("GET")
@@ -57,14 +50,10 @@ func main() {
 	log.Fatal(http.ListenAndServe(":8080", cors(router)))
 }
 
-func InitDB() *gorm.DB {
-	db, err := migrations.InitDB("user=asyl password=1234 dbname=ticketoffdb host=localhost port=5432 sslmode=disable")
+func InitDB() *mongo.Database {
+	db, err := migrations.InitDB("mongodb://localhost:27017")
 	if err != nil {
 		log.Fatal("Error initializing database: ", err)
-	}
-	models.MigrateUser(db)
-	if err := db.AutoMigrate(&models.Film{}).Error; err != nil {
-		log.Fatalf("Film migration failed: %v", err)
 	}
 	return db
 }

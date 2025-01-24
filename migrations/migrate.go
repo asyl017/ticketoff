@@ -1,38 +1,38 @@
 package migrations
 
 import (
-	"github.com/jinzhu/gorm"
-	_ "github.com/jinzhu/gorm/dialects/postgres"
+	"context"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"log"
-	"ticketoff/models"
+	"time"
 )
 
-var db *gorm.DB
+var db *mongo.Database
 
-// InitDB initializes the database and runs migrations
-func InitDB(connectionString string) (*gorm.DB, error) {
-	db, err := gorm.Open("postgres", connectionString)
+// InitDB initializes the MongoDB database
+func InitDB(connectionString string) (*mongo.Database, error) {
+	clientOptions := options.Client().ApplyURI(connectionString)
+	client, err := mongo.NewClient(clientOptions)
 	if err != nil {
 		return nil, err
 	}
 
-	// Automatically migrate the schema
-	if err := db.AutoMigrate(&models.User{}).Error; err != nil {
-		log.Fatalf("Migration failed: %v", err)
-		return nil, err
-	}
-	// Automatically migrate the Film schema
-	if err := db.AutoMigrate(&models.Film{}).Error; err != nil {
-		log.Fatalf("Film migration failed: %v", err)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	err = client.Connect(ctx)
+	if err != nil {
 		return nil, err
 	}
 
-	log.Println("Database connected and migrated successfully")
+	db = client.Database("ticketoffdb")
+
+	log.Println("Database connected successfully")
 	return db, nil
-
 }
 
 // GetDB returns the DB instance for use in other packages
-func GetDB() *gorm.DB {
+func GetDB() *mongo.Database {
 	return db
 }
