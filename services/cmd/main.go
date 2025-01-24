@@ -4,10 +4,10 @@ import (
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"log"
 	"net/http"
 	"ticketoff/handler"
-	"ticketoff/migrations"
 	"ticketoff/repositories"
 	"ticketoff/utils"
 )
@@ -51,9 +51,28 @@ func main() {
 }
 
 func InitDB() *mongo.Database {
-	db, err := migrations.InitDB("mongodb://localhost:27017")
+	// MongoDB Atlas URI (Replace this with your actual MongoDB Atlas URI)
+	uri := "mongodb+srv://asyl17:1234567654321@cluster0.t7gd8.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+
+	// Set MongoDB Atlas connection options
+	clientOptions := options.Client().ApplyURI(uri)
+
+	// Create a MongoDB client
+	client, err := mongo.Connect(nil, clientOptions)
 	if err != nil {
-		log.Fatal("Error initializing database: ", err)
+		log.Fatal("Error initializing MongoDB client: ", err)
 	}
+
+	// Ping the MongoDB server to check if the connection is successful
+	err = client.Ping(nil, nil)
+	if err != nil {
+		log.Fatal("Error pinging MongoDB: ", err)
+	}
+
+	log.Println("Database connected successfully to MongoDB Atlas")
+
+	// Return the database instance
+	db := client.Database("ticketoffdb") // Use your database name here
 	return db
+
 }

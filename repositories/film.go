@@ -25,20 +25,20 @@ func NewFilmRepository(db *mongo.Database) FilmRepository {
 }
 
 func (f filmRepository) CreateFilm(film *models.Film) error {
-	collection := f.db.Collection("films")
+	collection := f.db.Collection("movies")
 	_, err := collection.InsertOne(context.Background(), film)
 	return err
 }
 
 func (f filmRepository) GetFilmByID(id string) (*models.Film, error) {
-	collection := f.db.Collection("films")
+	collection := f.db.Collection("movies")
 	var film models.Film
 	err := collection.FindOne(context.Background(), bson.M{"id": id}).Decode(&film)
 	return &film, err
 }
 
 func (f filmRepository) GetFilms(filter string, sort string, limit int, offset int) ([]models.Film, error) {
-	collection := f.db.Collection("films")
+	collection := f.db.Collection("movies")
 
 	// Create filter and sort options
 	filterOptions := bson.M{}
@@ -74,13 +74,13 @@ func (f filmRepository) GetFilms(filter string, sort string, limit int, offset i
 }
 
 func (f filmRepository) UpdateFilm(updatedFilm *models.Film) (*models.Film, error) {
-	collection := f.db.Collection("films")
+	collection := f.db.Collection("movies")
 	_, err := collection.UpdateOne(context.Background(), bson.M{"id": updatedFilm.ID}, bson.M{"$set": updatedFilm})
 	return updatedFilm, err
 }
 
 func (f filmRepository) DeleteFilm(id string) error {
-	collection := f.db.Collection("films")
+	collection := f.db.Collection("movies")
 	_, err := collection.DeleteOne(context.Background(), bson.M{"id": id})
 	return err
 }

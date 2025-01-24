@@ -2,6 +2,7 @@ package utils
 
 import (
 	"github.com/sirupsen/logrus"
+	"log"
 	"net/http"
 	"os"
 )
@@ -13,14 +14,23 @@ func InitLogger() {
 	Logger.SetFormatter(&logrus.JSONFormatter{})
 	Logger.SetReportCaller(true)
 
+	// Ensure that the logs directory exists
+	logDir := "logs"
+	if _, err := os.Stat(logDir); os.IsNotExist(err) {
+		err := os.Mkdir(logDir, 0755)
+		if err != nil {
+			log.Fatalf("Failed to create log directory: %v", err)
+		}
+	}
+
 	// Log to a file
 	file, err := os.OpenFile("logs/logfile.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
-	if err == nil {
-		Logger.SetOutput(file)
-	} else {
+	if err != nil {
 		Logger.Info("Failed to log to file, using default stderr")
+	} else {
+		Logger.SetOutput(file)
+		defer file.Close()
 	}
-	defer file.Close()
 }
 
 func LoggingMiddleware(next http.Handler) http.Handler {
