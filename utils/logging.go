@@ -31,6 +31,7 @@ func InitLogger() {
 		Logger.SetOutput(file)
 		defer file.Close()
 	}
+	Logger.SetOutput(os.Stdout)
 }
 
 func LoggingMiddleware(next http.Handler) http.Handler {

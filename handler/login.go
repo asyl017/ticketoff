@@ -2,66 +2,109 @@ package handler
 
 import (
 	"encoding/json"
-	"github.com/golang-jwt/jwt/v4"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/bcrypt"
 	"net/http"
 	"ticketoff/models"
 	"ticketoff/repositories"
 	"ticketoff/utils"
 	"time"
+
+	"github.com/dgrijalva/jwt-go"
 )
 
-type AuthHandler interface {
-	Login(w http.ResponseWriter, r *http.Request)
+var jwtKey = []byte("your_secret_key")
+
+type Claims struct {
+	Email string `json:"email"`
+	jwt.StandardClaims
 }
 
-type authHandler struct {
-	userRepo repositories.UserRepository
+type AuthHandler struct {
+	UserRepo repositories.UserRepository
 }
 
-func NewAuthHandler(userRepo repositories.UserRepository) AuthHandler {
-	return &authHandler{userRepo: userRepo}
+func NewAuthHandler(userRepo repositories.UserRepository) *AuthHandler {
+	return &AuthHandler{UserRepo: userRepo}
 }
 
-func (a *authHandler) Login(w http.ResponseWriter, r *http.Request) {
-	var creds models.Credentials
-	err := json.NewDecoder(r.Body).Decode(&creds)
-	if err != nil {
-		utils.Logger.WithError(err).Error("Invalid request payload")
+func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
+	var creds models.User
+	if err := json.NewDecoder(r.Body).Decode(&creds); err != nil {
 		http.Error(w, "Invalid request payload", http.StatusBadRequest)
 		return
 	}
-	utils.Logger.Info("Logging in user with email: ", creds.Email)
-	user, err := a.userRepo.GetUserByEmail(creds.Email)
-	if err != nil {
-		utils.Logger.WithError(err).Error("Invalid email or password")
+
+	user, err := h.UserRepo.GetUserByEmail(creds.Email)
+	if err == nil {
+		utils.Logger.Info("User not found")
 		http.Error(w, "Invalid email or password", http.StatusUnauthorized)
 		return
 	}
-	utils.Logger.Info("User found: ", user, ". Comparing passwords")
-	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(creds.Password))
-	if err != nil {
-		utils.Logger.WithError(err).Error("Invalid email or password")
+	if bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(creds.Password)) != nil {
+		utils.Logger.WithFields(logrus.Fields{
+			"email":    creds.Email,
+			"password": creds.Password,
+			"hash":     user.Password,
+		}).Info("Password is incorrect")
 		http.Error(w, "Invalid email or password", http.StatusUnauthorized)
 		return
 	}
-	utils.Logger.Info("Password is correct. Generating token")
-	token, err := generateJWT(user)
+
+	expirationTime := time.Now().Add(24 * time.Hour)
+	claims := &Claims{
+		Email: user.Email,
+		StandardClaims: jwt.StandardClaims{
+			ExpiresAt: expirationTime.Unix(),
+		},
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	tokenString, err := token.SignedString(jwtKey)
 	if err != nil {
-		utils.Logger.WithError(err).Error("Error generating token")
 		http.Error(w, "Error generating token", http.StatusInternalServerError)
 		return
 	}
-	utils.Logger.Info("Token generated successfully. Sending response")
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"token": token})
+
+	http.SetCookie(w, &http.Cookie{
+		Name:    "token",
+		Value:   tokenString,
+		Expires: expirationTime,
+	})
 }
 
-func generateJWT(user *models.User) (string, error) {
-	claims := &jwt.StandardClaims{
-		ExpiresAt: time.Now().Add(time.Hour * 72).Unix(),
-		Issuer:    string(user.ID),
-	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString([]byte("your-secret-key"))
-}
+/*func (h *AuthHandler) Authenticate(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c, err := r.Cookie("token")
+		if err != nil {
+			if err == http.ErrNoCookie {
+				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+				return
+			}
+			http.Error(w, "Bad request", http.StatusBadRequest)
+			return
+		}
+
+		tknStr := c.Value
+		claims := &Claims{}
+		tkn, err := jwt.ParseWithClaims(tknStr, claims, func(token *jwt.Token) (interface{}, error) {
+			return jwtKey, nil
+		})
+
+		if err != nil {
+			if err == jwt.ErrSignatureInvalid {
+				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+				return
+			}
+			http.Error(w, "Bad request", http.StatusBadRequest)
+			return
+		}
+
+		if !tkn.Valid {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}*/

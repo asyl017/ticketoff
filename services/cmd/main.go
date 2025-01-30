@@ -1,15 +1,17 @@
 package main
 
 import (
-	"github.com/gorilla/handlers"
-	"github.com/gorilla/mux"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"fmt"
 	"log"
 	"net/http"
 	"ticketoff/handler"
 	"ticketoff/repositories"
 	"ticketoff/utils"
+
+	"github.com/gorilla/handlers"
+	"github.com/gorilla/mux"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func main() {
@@ -25,6 +27,7 @@ func main() {
 	userRouter := handler.NewUserRouter(userRepo)
 	authHandler := handler.NewAuthHandler(userRepo)
 	filmHandler := handler.NewFilmHandler(filmRepo)
+	registrationHandler := handler.NewRegistrationHandler(userRepo)
 
 	router.HandleFunc("/users", userRouter.CreateUser).Methods("POST")
 	router.HandleFunc("/users", userRouter.GetUsers).Methods("GET")
@@ -41,6 +44,23 @@ func main() {
 
 	emailHandler := handler.EmailHandler{UserRepo: userRepo}
 	router.HandleFunc("/confirm-email", emailHandler.ConfirmEmail).Methods("GET")
+
+	// Serve the registration HTML page
+	router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
+	//router.HandleFunc("/register", func(w http.ResponseWriter, r *http.Request) {
+	//	http.ServeFile(w, r, "/templates/reg.html")
+	//}).Methods("GET")
+
+	// OAuth 2.0 registration routes
+	router.HandleFunc("/register", registrationHandler.Register).Methods("POST")
+	router.HandleFunc("/callback", registrationHandler.HandleGoogleCallback)
+
+	// Email verification routes
+	router.HandleFunc("/verify", registrationHandler.VerifyEmail).Methods("GET")
+
+	// Protected routes
+	protected := router.PathPrefix("/admin").Subrouter()
+	protected.HandleFunc("/dashboard", adminDashboard).Methods("GET")
 
 	cors := handlers.CORS(
 		handlers.AllowedOrigins([]string{"*"}),
@@ -75,4 +95,7 @@ func InitDB() *mongo.Database {
 	db := client.Database("ticketoffdb") // Use your database name here
 	return db
 
+}
+func adminDashboard(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(w, "Welcome to the admin dashboard!")
 }

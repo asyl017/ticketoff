@@ -3,13 +3,15 @@ package utils
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"fmt"
-	"github.com/golang-jwt/jwt/v4"
 	"ticketoff/models"
 	"time"
+
+	"github.com/golang-jwt/jwt/v4"
 )
 
-func generateJWT(user *models.User) (string, error) {
+func GenerateJWT(user *models.User) (string, error) {
 	claims := &jwt.StandardClaims{
 		ExpiresAt: time.Now().Add(time.Hour * 72).Unix(),
 		Issuer:    fmt.Sprintf("%d", user.ID),
@@ -32,4 +34,38 @@ func ParseToken(tokenString string) (string, error) {
 		return "", err
 	}
 	return claims.Issuer, nil
+}
+
+var jwtKey = []byte("your-secret-key")
+
+func VerifyEmailToken(tokenString string) (string, error) {
+
+	claims := &jwt.StandardClaims{}
+
+	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+
+		return jwtKey, nil
+
+	})
+
+	if err != nil {
+
+		return "", err
+
+	}
+
+	if !token.Valid {
+
+		return "", errors.New("invalid token")
+
+	}
+
+	if claims.ExpiresAt < time.Now().Unix() {
+
+		return "", errors.New("token expired")
+
+	}
+
+	return claims.Subject, nil
+
 }

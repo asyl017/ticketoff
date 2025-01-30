@@ -15,6 +15,8 @@ type UserRepository interface {
 	DeleteUser(id string) error
 	GetUsers() ([]models.User, error)
 	ConfirmEmail(email string) error
+	VerifyUserEmail(email string) error
+
 }
 
 type userRepository struct {
@@ -76,6 +78,12 @@ func (u userRepository) GetUsers() ([]models.User, error) {
 		users = append(users, user)
 	}
 	return users, nil
+}
+
+func (u userRepository) VerifyUserEmail(email string) error {
+	collection := u.db.Collection("users")
+	_, err := collection.UpdateOne(context.Background(), bson.M{"email": email}, bson.M{"$set": bson.M{"verified": true}})
+	return err
 }
 
 func (u userRepository) ConfirmEmail(email string) error {

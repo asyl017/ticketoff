@@ -5,10 +5,12 @@ import (
 )
 
 type User struct {
-	ID             uint   `json:"id" gorm:"primary_key;auto_increment"`
-	Email          string `json:"email" gorm:"unique"`
-	Password       string `json:"password" gorm:"not null"`
-	EmailConfirmed bool   `json:"email_confirmed" gorm:"default:false"`
+    ID             uint   `json:"id" bson:"_id,omitempty"`
+    Email          string `json:"email" bson:"email"`
+    Password       string `json:"password" bson:"password"`
+    EmailConfirmed bool   `json:"email_confirmed" bson:"email_confirmed"`
+    VerificationCode string `json:"verification_code" bson:"verification_code"`
+    Role           string `json:"role" bson:"role"`
 }
 
 type Credentials struct {
