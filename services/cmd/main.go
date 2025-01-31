@@ -72,7 +72,7 @@ func main() {
 
 func InitDB() *mongo.Database {
 	// MongoDB Atlas URI (Replace this with your actual MongoDB Atlas URI)
-	uri := "mongodb+srv://asyl17:1234567654321@cluster0.t7gd8.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+	const uri = "mongodb+srv://asyl17:1234567654321@cluster0.t7gd8.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
 
 	// Set MongoDB Atlas connection options
 	clientOptions := options.Client().ApplyURI(uri)

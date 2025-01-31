@@ -2,15 +2,16 @@ package models
 
 import (
 	"github.com/jinzhu/gorm"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type User struct {
-    ID             uint   `json:"id" bson:"_id,omitempty"`
-    Email          string `json:"email" bson:"email"`
-    Password       string `json:"password" bson:"password"`
-    EmailConfirmed bool   `json:"email_confirmed" bson:"email_confirmed"`
-    VerificationCode string `json:"verification_code" bson:"verification_code"`
-    Role           string `json:"role" bson:"role"`
+	ID               primitive.ObjectID `json:"id" bson:"_id,omitempty"`
+	Email            string             `json:"email" bson:"email"`
+	Password         string             `json:"password" bson:"password"`
+	EmailConfirmed   bool               `json:"email_confirmed" bson:"email_confirmed"`
+	VerificationCode string             `json:"verification_code" bson:"verification_code"`
+	Role             string             `json:"role" bson:"role"`
 }
 
 type Credentials struct {

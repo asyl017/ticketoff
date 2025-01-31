@@ -31,14 +31,16 @@ func NewAuthHandler(userRepo repositories.UserRepository) *AuthHandler {
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	var creds models.User
 	if err := json.NewDecoder(r.Body).Decode(&creds); err != nil {
-		http.Error(w, "Invalid request payload", http.StatusBadRequest)
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{"message": "Invalid request payload"})
 		return
 	}
 
 	user, err := h.UserRepo.GetUserByEmail(creds.Email)
 	if err == nil {
 		utils.Logger.Info("User not found")
-		http.Error(w, "Invalid email or password", http.StatusUnauthorized)
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(map[string]string{"message": "Invalid email or password"})
 		return
 	}
 	if bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(creds.Password)) != nil {
@@ -47,7 +49,8 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 			"password": creds.Password,
 			"hash":     user.Password,
 		}).Info("Password is incorrect")
-		http.Error(w, "Invalid email or password", http.StatusUnauthorized)
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(map[string]string{"message": "Invalid email or password"})
 		return
 	}
 
@@ -62,7 +65,8 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	tokenString, err := token.SignedString(jwtKey)
 	if err != nil {
-		http.Error(w, "Error generating token", http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"message": "Error generating token"})
 		return
 	}
 
@@ -71,6 +75,8 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		Value:   tokenString,
 		Expires: expirationTime,
 	})
+	json.NewEncoder(w).Encode(map[string]string{"token": tokenString})
+
 }
 
 /*func (h *AuthHandler) Authenticate(next http.Handler) http.Handler {

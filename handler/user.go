@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/gorilla/mux"
 	"github.com/jinzhu/gorm"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/crypto/bcrypt"
 	"log"
 	"net/http"
@@ -42,28 +43,44 @@ func (u userRouter) CreateUser(w http.ResponseWriter, r *http.Request) {
 	var user models.User
 	err := json.NewDecoder(r.Body).Decode(&user)
 	if err != nil {
-		http.Error(w, "Invalid request payload", http.StatusBadRequest)
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(HttpError{Code: http.StatusBadRequest, Message: "Invalid request payload"})
 		return
 	}
 
 	// Validate user input
 	if user.Email == "" || user.Password == "" {
-		http.Error(w, "Email and password are required", http.StatusBadRequest)
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(HttpError{Code: http.StatusBadRequest, Message: "Email and password are required"})
 		return
 	}
 	if !utils.IsValidEmail(user.Email) {
-		http.Error(w, "Invalid email format", http.StatusBadRequest)
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(HttpError{Code: http.StatusBadRequest, Message: "Invalid email format"})
 		return
 	}
 	if !utils.ValidatePassword(user.Password) {
-		http.Error(w, "Password must be at least 8 characters", http.StatusBadRequest)
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(HttpError{Code: http.StatusBadRequest, Message: "Password must be at least 8 characters"})
 		return
 	}
+
+	// Check if user already exists
+	existingUser, err := u.userRepo.GetUserByEmail(user.Email)
+	if err == nil && existingUser != nil {
+		w.WriteHeader(http.StatusConflict)
+		json.NewEncoder(w).Encode(HttpError{Code: http.StatusConflict, Message: "User already exists"})
+		return
+	}
+
+	// Generate a new ObjectID for the user
+	user.ID = primitive.NewObjectID()
 
 	// Hash password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 	if err != nil {
-		http.Error(w, "Error hashing password", http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(HttpError{Code: http.StatusInternalServerError, Message: "Error hashing password"})
 		return
 	}
 	user.Password = string(hashedPassword)
@@ -71,7 +88,8 @@ func (u userRouter) CreateUser(w http.ResponseWriter, r *http.Request) {
 	// Save user
 	err = u.userRepo.CreateUser(&user)
 	if err != nil {
-		http.Error(w, "Error creating user: "+err.Error(), http.StatusConflict)
+		w.WriteHeader(http.StatusConflict)
+		json.NewEncoder(w).Encode(HttpError{Code: http.StatusConflict, Message: "Error creating user: " + err.Error()})
 		return
 	}
 
@@ -79,7 +97,8 @@ func (u userRouter) CreateUser(w http.ResponseWriter, r *http.Request) {
 	confirmationLink := fmt.Sprintf("http://localhost:8080/confirm-email?token=%s", utils.GenerateToken(user.Email))
 	err = utils.SendEmail(user.Email, "Confirm your email", "Please confirm your email by clicking the following link: "+confirmationLink)
 	if err != nil {
-		http.Error(w, "Error sending confirmation email: "+err.Error(), http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(HttpError{Code: http.StatusInternalServerError, Message: "Error sending confirmation email: " + err.Error()})
 		return
 	}
 
@@ -88,18 +107,43 @@ func (u userRouter) CreateUser(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(user)
 }
 
+// GetUsers
+func (u userRouter) GetUsers(w http.ResponseWriter, r *http.Request) {
+	log.Println("Fetching all users")
+
+	users, err := u.userRepo.GetUsers()
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(HttpError{Code: http.StatusInternalServerError, Message: "Error fetching users"})
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(users)
+}
+
 // GetUserByID
 func (u userRouter) GetUserByID(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
 
-	user, err := u.userRepo.GetUserByID(id)
+	objectID, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(HttpError{Code: http.StatusBadRequest, Message: "Invalid user ID"})
+		return
+	}
+
+	user, err := u.userRepo.GetUserByID(objectID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			http.Error(w, "User not found", http.StatusNotFound)
+			w.WriteHeader(http.StatusNotFound)
+			json.NewEncoder(w).Encode(HttpError{Code: http.StatusNotFound, Message: "User not found"})
 			return
 		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(HttpError{Code: http.StatusInternalServerError, Message: "Internal server error"})
+		log.Println("Error fetching user by ID:", err)
 		return
 	}
 
@@ -107,52 +151,44 @@ func (u userRouter) GetUserByID(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(user)
 }
 
-// Handler for updating a user (PUT)
+// UpdateUser
 func (u userRouter) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
 
-	// Retrieve the user by ID
-	user, err := u.userRepo.GetUserByID(id)
+	objectID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			http.Error(w, "User not found", http.StatusNotFound)
-			return
-		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(HttpError{Code: http.StatusBadRequest, Message: "Invalid user ID"})
 		return
 	}
 
-	// Decode the request body to get the updated user details
 	var updatedUser models.User
 	err = json.NewDecoder(r.Body).Decode(&updatedUser)
 	if err != nil {
-		http.Error(w, "Invalid request payload", http.StatusBadRequest)
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(HttpError{Code: http.StatusBadRequest, Message: "Invalid request payload"})
 		return
 	}
 
-	// Store the unhashed password
-	unhashedPassword := updatedUser.Password
-
-	// Hash the new password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(updatedUser.Password), bcrypt.DefaultCost)
 	if err != nil {
-		http.Error(w, "Error hashing password", http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(HttpError{Code: http.StatusInternalServerError, Message: "Error hashing password"})
 		return
 	}
 	updatedUser.Password = string(hashedPassword)
+	updatedUser.ID = objectID
 
-	// Update the user in the repository
-	updatedUser.ID = user.ID
 	updatedUserPtr, err := u.userRepo.UpdateUser(&updatedUser)
 	if err != nil {
-		http.Error(w, "Error updating user: "+err.Error(), http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(HttpError{Code: http.StatusInternalServerError, Message: "Error updating user: " + err.Error()})
 		return
 	}
 
-	// Return the unhashed password and the updated user
 	response := map[string]interface{}{
-		"unhashed_password": unhashedPassword,
+		"unhashed_password": updatedUser.Password,
 		"user":              updatedUserPtr,
 	}
 
@@ -160,34 +196,29 @@ func (u userRouter) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
-// Handler for deleting a user (DELETE)
+// DeleteUser
 func (u userRouter) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
 
-	err := u.userRepo.DeleteUser(id)
+	objectID, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(HttpError{Code: http.StatusBadRequest, Message: "Invalid user ID"})
+		return
+	}
+
+	err = u.userRepo.DeleteUser(objectID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			http.Error(w, "User not found", http.StatusNotFound)
+			w.WriteHeader(http.StatusNotFound)
+			json.NewEncoder(w).Encode(HttpError{Code: http.StatusNotFound, Message: "User not found"})
 			return
 		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(HttpError{Code: http.StatusInternalServerError, Message: "Error deleting user: " + err.Error()})
 		return
 	}
 
 	w.WriteHeader(http.StatusNoContent)
-}
-
-// Handler for fetching all users (GET)
-func (u userRouter) GetUsers(w http.ResponseWriter, r *http.Request) {
-	log.Println("Fetching all users")
-
-	users, err := u.userRepo.GetUsers()
-	if err != nil {
-		http.Error(w, "Error fetching users", http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(users)
 }

@@ -1,0 +1,12 @@
+# Binaries
+main
+
+# Vendor directory
+vendor
+
+# IDE files
+.idea
+.vscode
+
+# OS generated files
+.DS_Store
