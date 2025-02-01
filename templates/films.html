@@ -68,9 +68,8 @@
     function fetchFilms() {
         const params = new URLSearchParams(window.location.search);
 
-        // Извлекаем значения из параметров
-        const filter = params.get('filter') || '';  // Если параметр отсутствует, будет пустая строка
-        const sort = params.get('sort') || 'title'; // Если параметр отсутствует, по умолчанию сортируем по "title"
+        const filter = params.get('filter') || '';
+        const sort = params.get('sort') || 'title';
         const page = params.get('page') || 1;
         const newUrl = `${url}/films?filter=${filter}&sort=${sort}&page=${page}`;
 
@@ -100,7 +99,7 @@
                     row.appendChild(directorCell);
 
                     const releaseYearCell = document.createElement('td');
-                    releaseYearCell.textContent = film.release_year;
+                    releaseYearCell.textContent = film.release_year; // Ensure this matches the property name in the JSON response
                     row.appendChild(releaseYearCell);
 
                     const actionsCell = document.createElement('td');
@@ -194,19 +193,9 @@
         }
     }
 
-    // // Create a new film
-    // document.getElementById('filmForm').addEventListener('submit', function(e) {
-    //     e.preventDefault();
-    //     const id = document.getElementById('filmId').value;
-    //     if (id) {
-    //         updateFilm();
-    //     } else {
-    //         createFilm();
-    //     }
-    // });
-
     // Load films on page load
     fetchFilms();
+    
 </script>
 </body>
 </html>

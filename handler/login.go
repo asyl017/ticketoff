@@ -37,7 +37,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	user, err := h.UserRepo.GetUserByEmail(creds.Email)
-	if err == nil {
+	if err != nil {
 		utils.Logger.Info("User not found")
 		w.WriteHeader(http.StatusUnauthorized)
 		json.NewEncoder(w).Encode(map[string]string{"message": "Invalid email or password"})
@@ -49,8 +49,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 			"password": creds.Password,
 			"hash":     user.Password,
 		}).Info("Password is incorrect")
-		w.WriteHeader(http.StatusUnauthorized)
-		json.NewEncoder(w).Encode(map[string]string{"message": "Invalid email or password"})
+		http.Error(w, "Invalid email or password", http.StatusUnauthorized)
 		return
 	}
 
@@ -65,8 +64,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	tokenString, err := token.SignedString(jwtKey)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{"message": "Error generating token"})
+		http.Error(w, "Error generating token", http.StatusInternalServerError)
 		return
 	}
 
@@ -76,7 +74,6 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		Expires: expirationTime,
 	})
 	json.NewEncoder(w).Encode(map[string]string{"token": tokenString})
-
 }
 
 /*func (h *AuthHandler) Authenticate(next http.Handler) http.Handler {

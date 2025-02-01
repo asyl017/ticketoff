@@ -128,5 +128,6 @@ func (f *filmHandler) GetFilms(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Error fetching films: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
+	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(films)
 }

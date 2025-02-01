@@ -94,7 +94,6 @@ func InitDB() *mongo.Database {
 	// Return the database instance
 	db := client.Database("ticketoffdb") // Use your database name here
 	return db
-
 }
 func adminDashboard(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Welcome to the admin dashboard!")

@@ -222,3 +222,22 @@ func (u userRouter) DeleteUser(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusNoContent)
 }
+
+func (u userRouter) GetUserByEmail(w http.ResponseWriter, r *http.Request) {
+	email := r.URL.Query().Get("email")
+	if email == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(HttpError{Code: http.StatusBadRequest, Message: "Email is required"})
+		return
+	}
+
+	user, err := u.userRepo.GetUserByEmail(email)
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(HttpError{Code: http.StatusNotFound, Message: "User not found"})
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(user)
+}

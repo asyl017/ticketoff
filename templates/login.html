@@ -54,18 +54,23 @@
             body: JSON.stringify({ email, password })
         })
             .then(response => {
+                const contentType = response.headers.get('content-type');
                 if (!response.ok) {
-                    return response.json().then(errorData => {
-                        throw new Error(errorData.message);
-                    }).catch(() => {
-                        throw new Error('Invalid email or password');
-                    });
+                    if (contentType && contentType.includes('application/json')) {
+                        return response.json().then(errorData => {
+                            throw new Error(errorData.message);
+                        });
+                    } else {
+                        return response.text().then(text => {
+                            throw new Error(text);
+                        });
+                    }
                 }
                 return response.json();
             })
             .then(data => {
                 console.log('Login successful:', data);
-                // Handle successful login (e.g., redirect to another page)
+                window.location.href = 'films.html'; // Redirect to films.html after successful login
             })
             .catch(error => {
                 console.error('Error:', error.message);
