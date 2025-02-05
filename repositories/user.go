@@ -2,10 +2,11 @@ package repositories
 
 import (
 	"context"
+	"ticketoff/models"
+
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
-	"ticketoff/models"
 )
 
 type UserRepository interface {
@@ -16,7 +17,7 @@ type UserRepository interface {
 	GetUserByEmail(email string) (*models.User, error)
 	GetUsers() ([]models.User, error)
 	ConfirmEmail(email string) error
-	VerifyUserEmail(email string) error
+	VerifyUser(email string) error
 }
 
 type userRepository struct {
@@ -24,17 +25,31 @@ type userRepository struct {
 }
 
 func NewUserRepository(db *mongo.Database) UserRepository {
-	return &userRepository{
-		db: db,
-	}
+	return &userRepository{db: db}
 }
 
-func (u userRepository) CreateUser(user *models.User) error {
+func (repo *userRepository) CreateUser(user *models.User) error {
+	collection := repo.db.Collection("users")
+	_, err := collection.InsertOne(context.Background(), user)
+	return err
+}
+
+func (repo *userRepository) VerifyUser(email string) error {
+	collection := repo.db.Collection("users")
+	_, err := collection.UpdateOne(
+		context.Background(),
+		bson.M{"email": email},
+		bson.M{"$set": bson.M{"email_confirmed": true}},
+	)
+	return err
+}
+
+/*func (u userRepository) CreateUser(user *models.User) error {
 	collection := u.db.Collection("users")
 	user.ID = primitive.NewObjectID()
 	_, err := collection.InsertOne(context.Background(), user)
 	return err
-}
+}*/
 
 func (u userRepository) GetUserByID(id primitive.ObjectID) (*models.User, error) {
 	collection := u.db.Collection("users")
@@ -89,6 +104,10 @@ func (u userRepository) VerifyUserEmail(email string) error {
 
 func (u userRepository) ConfirmEmail(email string) error {
 	collection := u.db.Collection("users")
-	_, err := collection.UpdateOne(context.Background(), bson.M{"email": email}, bson.M{"$set": bson.M{"email_confirmed": true}})
+	_, err := collection.UpdateOne(
+		context.Background(),
+		bson.M{"email": email},
+		bson.M{"$set": bson.M{"email_confirmed": true}},
+	)
 	return err
 }

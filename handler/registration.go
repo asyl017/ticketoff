@@ -2,13 +2,15 @@ package handler
 
 import (
 	"encoding/json"
-	"golang.org/x/crypto/bcrypt"
+	"fmt"
 	"net/http"
 	"os"
 	"ticketoff/models"
 	"ticketoff/repositories"
 	"ticketoff/utils"
 	"time"
+
+	"golang.org/x/crypto/bcrypt"
 
 	"github.com/jinzhu/gorm"
 	"golang.org/x/oauth2"
@@ -28,6 +30,39 @@ var (
 
 type RegistrationHandler struct {
 	UserRepo repositories.UserRepository
+}
+
+func (h *RegistrationHandler) RegisterUser(w http.ResponseWriter, r *http.Request) {
+	var user models.User
+	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
+		http.Error(w, "Invalid request payload", http.StatusBadRequest)
+		return
+	}
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
+	if err != nil {
+		http.Error(w, "Failed to hash password", http.StatusInternalServerError)
+		return
+	}
+	user.Password = string(hashedPassword)
+	user.EmailConfirmed = false
+
+	err = h.UserRepo.CreateUser(&user)
+	if err != nil {
+		http.Error(w, "Failed to create user", http.StatusInternalServerError)
+		return
+	}
+
+	verificationLink := fmt.Sprintf("http://localhost:8080/verify?email=%s", user.Email)
+	subject := "Email Verification"
+	body := "Please verify your email by clicking on the following link: " + verificationLink
+	err = utils.SendVerificationEmail(user.Email, subject, body)
+	if err != nil {
+		http.Error(w, "Failed to send verification email", http.StatusInternalServerError)
+		return
+	}
+
+	w.Write([]byte("Registration successful, please check your email to verify your account"))
 }
 
 func NewRegistrationHandler(userRepo repositories.UserRepository) *RegistrationHandler {
@@ -114,18 +149,18 @@ func (h *RegistrationHandler) VerifyEmail(w http.ResponseWriter, r *http.Request
 	}
 
 	// Verify the token (this is a placeholder, implement your own verification logic)
-	email, err := utils.VerifyEmailToken(token)
+	/*email, err := utils.VerifyEmailToken(token)
 	if err != nil {
 		http.Error(w, "Invalid or expired token", http.StatusBadRequest)
 		return
-	}
+	}*/
 
 	// Update the user's email verification status in the database
-	err = h.UserRepo.VerifyUserEmail(email)
+	/*err = h.UserRepo.VerifyUserEmail(email)
 	if err != nil {
 		http.Error(w, "Failed to verify email: "+err.Error(), http.StatusInternalServerError)
 		return
-	}
+	}*/
 
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("Email verified successfully"))
@@ -144,12 +179,15 @@ func (h *RegistrationHandler) Register(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "User already exists", http.StatusConflict)
 		return
 	}
+
+	// Hash the password
 	password, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 	if err != nil {
 		http.Error(w, "Failed to hash password", http.StatusInternalServerError)
 		return
 	}
 	user.Password = string(password)
+	user.EmailConfirmed = false
 
 	// Create a new user
 	if err := h.UserRepo.CreateUser(&user); err != nil {
@@ -157,20 +195,18 @@ func (h *RegistrationHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Generate JWT token for the user
-	jwtToken, err := utils.GenerateJWT(&user)
+	// Generate a verification token
+	verificationToken := utils.GenerateToken(user.Email)
+
+	// Send verification email
+	verificationLink := fmt.Sprintf("http://localhost:8080/verify?token=%s", verificationToken)
+	subject := "Email Verification"
+	body := "Please verify your email by clicking on the following link: " + verificationLink
+	err = utils.SendVerificationEmail(user.Email, subject, body)
 	if err != nil {
-		http.Error(w, "Failed to generate token: "+err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Failed to send verification email", http.StatusInternalServerError)
 		return
 	}
 
-	// Set the token as a cookie
-	http.SetCookie(w, &http.Cookie{
-		Name:    "token",
-		Value:   jwtToken,
-		Expires: time.Now().Add(72 * time.Hour),
-	})
-
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(user)
+	w.Write([]byte("Registration successful, please check your email to verify your account"))
 }

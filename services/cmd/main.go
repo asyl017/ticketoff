@@ -14,6 +14,8 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+var db *mongo.Database
+
 func main() {
 	utils.InitLogger()
 	router := mux.NewRouter()
@@ -56,8 +58,11 @@ func main() {
 	router.HandleFunc("/callback", registrationHandler.HandleGoogleCallback)
 
 	// Email verification routes
-	router.HandleFunc("/verify", registrationHandler.VerifyEmail).Methods("GET")
-
+	router.HandleFunc("/register", registrationHandler.RegisterUser).Methods("POST")
+	router.HandleFunc("/verify", func(w http.ResponseWriter, r *http.Request) {
+		log.Println("Verify endpoint called")
+		handler.VerifyUser(w, r, db)
+	}).Methods("GET")
 	// Protected routes
 	protected := router.PathPrefix("/admin").Subrouter()
 	protected.HandleFunc("/dashboard", adminDashboard).Methods("GET")

@@ -3,13 +3,14 @@ package utils
 import (
 	"crypto/rand"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"ticketoff/models"
 	"time"
 
 	"github.com/golang-jwt/jwt/v4"
 )
+
+var jwtKey = []byte("your-secret-key")
 
 func GenerateJWT(user *models.User) (string, error) {
 	claims := &jwt.StandardClaims{
@@ -25,47 +26,14 @@ func GenerateToken(email string) string {
 	rand.Read(token)
 	return hex.EncodeToString(token)
 }
+
 func ParseToken(tokenString string) (string, error) {
 	claims := &jwt.StandardClaims{}
 	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
-		return []byte("your-secret-key"), nil
+		return jwtKey, nil
 	})
 	if err != nil || !token.Valid {
 		return "", err
 	}
-	return claims.Issuer, nil
-}
-
-var jwtKey = []byte("your-secret-key")
-
-func VerifyEmailToken(tokenString string) (string, error) {
-
-	claims := &jwt.StandardClaims{}
-
-	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
-
-		return jwtKey, nil
-
-	})
-
-	if err != nil {
-
-		return "", err
-
-	}
-
-	if !token.Valid {
-
-		return "", errors.New("invalid token")
-
-	}
-
-	if claims.ExpiresAt < time.Now().Unix() {
-
-		return "", errors.New("token expired")
-
-	}
-
 	return claims.Subject, nil
-
 }

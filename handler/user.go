@@ -4,15 +4,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/gorilla/mux"
-	"github.com/jinzhu/gorm"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"golang.org/x/crypto/bcrypt"
 	"log"
 	"net/http"
 	"ticketoff/models"
 	"ticketoff/repositories"
 	"ticketoff/utils"
+
+	"github.com/gorilla/mux"
+	"github.com/jinzhu/gorm"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type HttpError struct {
@@ -95,7 +96,7 @@ func (u userRouter) CreateUser(w http.ResponseWriter, r *http.Request) {
 
 	// Send confirmation email
 	confirmationLink := fmt.Sprintf("http://localhost:8080/confirm-email?token=%s", utils.GenerateToken(user.Email))
-	err = utils.SendEmail(user.Email, "Confirm your email", "Please confirm your email by clicking the following link: "+confirmationLink)
+	err = utils.SendVerificationEmail(user.Email, "Confirm your email", "Please confirm your email by clicking the following link: "+confirmationLink)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(HttpError{Code: http.StatusInternalServerError, Message: "Error sending confirmation email: " + err.Error()})

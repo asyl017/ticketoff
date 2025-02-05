@@ -1,19 +1,24 @@
 package utils
 
-import "net/smtp"
+import (
+	"gopkg.in/gomail.v2"
+)
 
-func SendEmail(to, subject, body string) error {
-	from := "your-email@example.com"
-	password := "your-email-password"
+func SendVerificationEmail(to, subject, body string) error {
+	from := "sanek.tursumetov@gmail.com"
+	password := "sgcutbspyldbjycc"
 
-	// Set up authentication information.
-	auth := smtp.PlainAuth("", from, password, "smtp.example.com")
+	m := gomail.NewMessage()
+	m.SetHeader("From", from)
+	m.SetHeader("To", to)
+	m.SetHeader("Subject", subject)
+	m.SetBody("text/plain", body)
 
-	msg := "From: " + from + "\n" +
-		"To: " + to + "\n" +
-		"Subject: " + subject + "\n\n" +
-		body
+	d := gomail.NewDialer("smtp.gmail.com", 587, from, password)
 
-	err := smtp.SendMail("smtp.example.com:587", auth, from, []string{to}, []byte(msg))
-	return err
+	if err := d.DialAndSend(m); err != nil {
+		return err
+	}
+
+	return nil
 }
