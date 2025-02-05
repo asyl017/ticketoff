@@ -2,13 +2,15 @@ package handler
 
 import (
 	"encoding/json"
-	"github.com/sirupsen/logrus"
-	"golang.org/x/crypto/bcrypt"
+	"log"
 	"net/http"
 	"ticketoff/models"
 	"ticketoff/repositories"
 	"ticketoff/utils"
 	"time"
+
+	"github.com/sirupsen/logrus"
+	"golang.org/x/crypto/bcrypt"
 
 	"github.com/dgrijalva/jwt-go"
 )
@@ -50,6 +52,11 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 			"hash":     user.Password,
 		}).Info("Password is incorrect")
 		http.Error(w, "Invalid email or password", http.StatusUnauthorized)
+		return
+	}
+	log.Println(user.EmailConfirmed)
+	if !user.EmailConfirmed {
+		http.Error(w, "Email not verified", http.StatusUnauthorized)
 		return
 	}
 
