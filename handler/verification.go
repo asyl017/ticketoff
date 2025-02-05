@@ -18,6 +18,7 @@ func VerifyUser(w http.ResponseWriter, r *http.Request, db *mongo.Database) {
 	}
 
 	email, err := utils.ParseToken(token)
+	log.Println(err)
 	if err != nil {
 		http.Error(w, "Invalid or expired token", http.StatusBadRequest)
 		return

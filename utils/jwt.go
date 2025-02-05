@@ -1,8 +1,6 @@
 package utils
 
 import (
-	"crypto/rand"
-	"encoding/hex"
 	"fmt"
 	"ticketoff/models"
 	"time"
@@ -22,9 +20,13 @@ func GenerateJWT(user *models.User) (string, error) {
 }
 
 func GenerateToken(email string) string {
-	token := make([]byte, 16)
-	rand.Read(token)
-	return hex.EncodeToString(token)
+	claims := &jwt.StandardClaims{
+		Subject:   email,
+		ExpiresAt: time.Now().Add(time.Hour * 72).Unix(),
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	tokenString, _ := token.SignedString(jwtKey)
+	return tokenString
 }
 
 func ParseToken(tokenString string) (string, error) {

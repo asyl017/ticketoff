@@ -3,10 +3,12 @@ package handler
 import (
 	"encoding/json"
 	"fmt"
-	"gopkg.in/gomail.v2"
+	"log"
 	"net/http"
 	"ticketoff/repositories"
 	"ticketoff/utils"
+
+	"gopkg.in/gomail.v2"
 )
 
 type EmailRequest struct {
@@ -51,12 +53,17 @@ func (h *EmailHandler) ConfirmEmail(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid or expired token", http.StatusBadRequest)
 		return
 	}
+
+	log.Printf("Email to verify: %s", email)
+
 	err = h.UserRepo.ConfirmEmail(email)
 	if err != nil {
+		log.Printf("Error confirming email: %v", err)
 		http.Error(w, "Error confirming email: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
+	log.Println("Email verified successfully")
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("Email confirmed successfully!"))
 }

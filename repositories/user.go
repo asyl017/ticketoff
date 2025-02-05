@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"fmt"
 	"ticketoff/models"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -102,12 +103,18 @@ func (u userRepository) VerifyUserEmail(email string) error {
 	return err
 }
 
-func (u userRepository) ConfirmEmail(email string) error {
-	collection := u.db.Collection("users")
-	_, err := collection.UpdateOne(
+func (repo *userRepository) ConfirmEmail(email string) error {
+	collection := repo.db.Collection("users")
+	result, err := collection.UpdateOne(
 		context.Background(),
 		bson.M{"email": email},
 		bson.M{"$set": bson.M{"email_confirmed": true}},
 	)
-	return err
+	if err != nil {
+		return err
+	}
+	if result.MatchedCount == 0 {
+		return fmt.Errorf("no user found with email %s", email)
+	}
+	return nil
 }
