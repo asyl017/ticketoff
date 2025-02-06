@@ -11,16 +11,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/bcrypt"
-
-	"github.com/dgrijalva/jwt-go"
 )
-
-var jwtKey = []byte("your_secret_key")
-
-type Claims struct {
-	Email string `json:"email"`
-	jwt.StandardClaims
-}
 
 type AuthHandler struct {
 	UserRepo repositories.UserRepository
@@ -60,27 +51,15 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	expirationTime := time.Now().Add(24 * time.Hour)
-	claims := &Claims{
-		Email: user.Email,
-		StandardClaims: jwt.StandardClaims{
-			ExpiresAt: expirationTime.Unix(),
-		},
-	}
-
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenString, err := token.SignedString(jwtKey)
-	if err != nil {
-		http.Error(w, "Error generating token", http.StatusInternalServerError)
-		return
-	}
+	token := utils.GenerateToken(user.Email)
 
 	http.SetCookie(w, &http.Cookie{
 		Name:    "token",
-		Value:   tokenString,
-		Expires: expirationTime,
+		Path:    "/",
+		Value:   token,
+		Expires: time.Now().Add(72 * time.Hour),
 	})
-	json.NewEncoder(w).Encode(map[string]string{"token": tokenString})
+	json.NewEncoder(w).Encode(map[string]string{"token": token})
 }
 
 /*func (h *AuthHandler) Authenticate(next http.Handler) http.Handler {

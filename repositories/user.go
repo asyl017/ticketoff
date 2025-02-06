@@ -45,14 +45,7 @@ func (repo *userRepository) VerifyUser(email string) error {
 	return err
 }
 
-/*func (u userRepository) CreateUser(user *models.User) error {
-	collection := u.db.Collection("users")
-	user.ID = primitive.NewObjectID()
-	_, err := collection.InsertOne(context.Background(), user)
-	return err
-}*/
-
-func (u userRepository) GetUserByID(id primitive.ObjectID) (*models.User, error) {
+func (u *userRepository) GetUserByID(id primitive.ObjectID) (*models.User, error) {
 	collection := u.db.Collection("users")
 	var user models.User
 	err := collection.FindOne(context.Background(), bson.M{"_id": id}).Decode(&user)

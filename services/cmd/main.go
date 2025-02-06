@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"ticketoff/handler"
+	"ticketoff/middleware"
 	"ticketoff/repositories"
 	"ticketoff/utils"
 
@@ -30,6 +31,7 @@ func main() {
 	authHandler := handler.NewAuthHandler(userRepo)
 	filmHandler := handler.NewFilmHandler(filmRepo)
 	registrationHandler := handler.NewRegistrationHandler(userRepo)
+	emailHandler := handler.EmailHandler{UserRepo: userRepo}
 
 	router.HandleFunc("/users", userRouter.CreateUser).Methods("POST")
 	router.HandleFunc("/users", userRouter.GetUsers).Methods("GET")
@@ -37,6 +39,11 @@ func main() {
 	router.HandleFunc("/users/{id}", userRouter.UpdateUser).Methods("PUT")
 	router.HandleFunc("/users/{id}", userRouter.DeleteUser).Methods("DELETE")
 
+	router.HandleFunc("/login",
+		func(w http.ResponseWriter, r *http.Request) {
+			log.Println("Login endpoint called")
+			http.ServeFile(w, r, "templates/login.html")
+		}).Methods("GET")
 	router.HandleFunc("/login", authHandler.Login).Methods("POST")
 
 	router.HandleFunc("/films", filmHandler.GetFilms).Methods("GET")
@@ -44,14 +51,10 @@ func main() {
 
 	router.HandleFunc("/send-email", handler.SendEmail).Methods("POST")
 
-	emailHandler := handler.EmailHandler{UserRepo: userRepo}
 	router.HandleFunc("/confirm-email", emailHandler.ConfirmEmail).Methods("GET")
 
 	// Serve the registration HTML page
 	router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
-	//router.HandleFunc("/register", func(w http.ResponseWriter, r *http.Request) {
-	//	http.ServeFile(w, r, "/templates/reg.html")
-	//}).Methods("GET")
 
 	// OAuth 2.0 registration routes
 	router.HandleFunc("/register", registrationHandler.Register).Methods("POST")
@@ -67,12 +70,24 @@ func main() {
 	protected := router.PathPrefix("/admin").Subrouter()
 	protected.HandleFunc("/dashboard", adminDashboard).Methods("GET")
 
+	// Protected routes
+	adminRouter := router.PathPrefix("/admin").Subrouter()
+	adminRouter.Use(middleware.AdminMiddleware(userRepo))
+	adminRouter.HandleFunc("/admin", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "./templates/admin.html")
+	}).Methods("GET")
+	adminRouter.HandleFunc("/admin_panel", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "./templates/admin_panel.html")
+	}).Methods("GET")
+	adminRouter.HandleFunc("/dashboard", adminDashboard).Methods("GET")
+
 	cors := handlers.CORS(
 		handlers.AllowedOrigins([]string{"*"}),
 		handlers.AllowedMethods([]string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}),
 		handlers.AllowedHeaders([]string{"Content-Type"}),
 	)
 	log.Fatal(http.ListenAndServe(":8080", cors(router)))
+
 }
 
 func InitDB() *mongo.Database {

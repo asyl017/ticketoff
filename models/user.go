@@ -12,6 +12,7 @@ type User struct {
 	EmailConfirmed   bool               `json:"email_confirmed" bson:"email_confirmed"`
 	VerificationCode string             `json:"verification_code" bson:"verification_code"`
 	Role             string             `json:"role" bson:"role"`
+	IsAdmin          bool               `json:"is_admin" bson:"is_admin"`
 }
 
 type Credentials struct {

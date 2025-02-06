@@ -1,7 +1,9 @@
 package utils
 
 import (
+	"errors"
 	"fmt"
+	"github.com/sirupsen/logrus"
 	"ticketoff/models"
 	"time"
 
@@ -16,7 +18,7 @@ func GenerateJWT(user *models.User) (string, error) {
 		Issuer:    fmt.Sprintf("%d", user.ID),
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString([]byte("your-secret-key"))
+	return token.SignedString(jwtKey)
 }
 
 func GenerateToken(email string) string {
@@ -30,12 +32,27 @@ func GenerateToken(email string) string {
 }
 
 func ParseToken(tokenString string) (string, error) {
-	claims := &jwt.StandardClaims{}
-	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+	logrus.Info("Parsing token for ", tokenString[0:10])
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			logrus.Error("Unexpected signing method: %v", token.Header["alg"])
+			return nil, jwt.ErrSignatureInvalid
+		}
 		return jwtKey, nil
 	})
-	if err != nil || !token.Valid {
+	if errors.Is(err, jwt.ErrSignatureInvalid) {
+		logrus.Error("Error parsing token: ", err)
+		return "", err
+	} else if errors.Is(err, jwt.ErrTokenExpired) {
+		logrus.Error("Error parsing token: ", err)
+		return "", err
+	} else if err != nil {
+		logrus.Error("Error parsing token: ", err)
 		return "", err
 	}
-	return claims.Subject, nil
+	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+		return claims["sub"].(string), nil
+	}
+	logrus.Error("Error parsing token: ", jwt.ErrTokenInvalidClaims)
+	return "", jwt.ErrTokenInvalidClaims
 }
