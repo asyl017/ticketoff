@@ -4,8 +4,8 @@
 TicketOff is a web application that provides users with an easy way to search for and purchase tickets for various events, such as movies, theater performances, concerts, and more. The project aims to create an intuitive interface and a reliable system that saves users time and simplifies access to events.
 
 ## Team Members
-- Tursumetov Alexander
 - Zhangubek Assylzhan
+- Tursumetov Alexander
 
 ## Screenshot of the Homepage  
 ![image](https://github.com/user-attachments/assets/119331e8-a537-4118-b0ee-dc0b886d5d3c)
@@ -26,7 +26,7 @@ TicketOff is a web application that provides users with an easy way to search fo
 ## f. Tools and Resources
 - **Programming Language**: Go (Golang)
 - **Frontend Technologies**: HTML, CSS, JavaScript
-- **Database**: PostgreSQL
+- **Database**: MongoDB
 - **Version Control**: Git
 - **Cloud Hosting**: AWS or Google Cloud
 - **Other Tools**: Figma (for UI/UX design), Postman (for API testing) 
